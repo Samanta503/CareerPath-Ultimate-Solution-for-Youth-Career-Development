@@ -76,7 +76,9 @@ CareerPath is an interactive platform designed to guide students and job-seekers
 
 ### Figma Design
 - The user interface has been designed using **Figma** to ensure a clean and intuitive user experience.
-- [Figma Design Link](https://www.figma.com/make/uaYIDti20a4gf1hNcd7L6L/CareerPath-Website-UI-Design?t=bgMmRDWUxwI81cAm-1)
+🔗 google Drive Link:
+[https://drive.google.com/drive/folders/1yQDq3c-HMI16N5js_siPYkqqSZlMJ627?usp=sharing](https://drive.google.com/drive/folders/1Hi-OUV_VTcU-E3sFK6AeWuW3LZX4dEqE?usp=sharing)
+
 
 ### Future Plans
 - Add more AI-driven features to improve career guidance.
