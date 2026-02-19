@@ -33,4 +33,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Post::class); // One user has many posts
     }
+
+    public function skills()
+    {
+        return $this->hasMany(UserSkill::class);
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class);
+    }
 }

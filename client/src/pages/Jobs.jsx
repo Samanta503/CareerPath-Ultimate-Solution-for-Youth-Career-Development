@@ -14,13 +14,15 @@ const skillColors = [
 export default function Jobs() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState([]);
+  const [userSkills, setUserSkills] = useState([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchJobs();
-  }, []);
+    if (user) fetchUserSkills();
+  }, [user]);
 
   const fetchJobs = async () => {
     try {
@@ -34,11 +36,69 @@ export default function Jobs() {
     }
   };
 
-  const getMatchScore = (job) => {
-    const scores = [60, 70, 75, 80, 85, 90, 95];
-    const hash = (job.title || '').length + (job.company || '').length;
-    return scores[hash % scores.length];
+  const fetchUserSkills = async () => {
+    try {
+      const res = await api.get(`/user-skills?user_id=${user.id}`);
+      setUserSkills(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Failed to fetch user skills:', e);
+      setUserSkills([]);
+    }
   };
+
+  // ---- Proficiency / Level numeric maps ----
+  const proficiencyRank = { Beginner: 1, Intermediate: 2, Expert: 3, Professional: 4 };
+  const jobLevelRank = { 'Entry Level': 1, 'Mid Level': 2, Senior: 3 };
+
+  // Compute the user's average proficiency as a numeric rank
+  const avgProficiency = userSkills.length > 0
+    ? userSkills.reduce((sum, s) => sum + (proficiencyRank[s.proficiency] || 1), 0) / userSkills.length
+    : 0;
+
+  // Determine the user's dominant "track" by checking which job-track their skills
+  // overlap with most (computed lazily inside getMatchDetails)
+  const userSkillNames = userSkills.map(s => (s.skill_name || '').toLowerCase());
+
+  // ---- Real match calculation ----
+  const getMatchDetails = (job) => {
+    // If not logged in or no skills, return zeros
+    if (!user || userSkills.length === 0) {
+      return { total: 0, skills: 0, experience: 0, track: 0, matchedSkills: [] };
+    }
+
+    const jobSkills = (Array.isArray(job.skills) ? job.skills : []).map(s => s.toLowerCase());
+
+    // --- Skills component (max 60) ---
+    let skillScore = 0;
+    let matchedSkills = [];
+    if (jobSkills.length > 0) {
+      matchedSkills = jobSkills.filter(js => userSkillNames.includes(js));
+      skillScore = Math.round((matchedSkills.length / jobSkills.length) * 60);
+    }
+
+    // --- Experience component (max 20) ---
+    const requiredLevel = jobLevelRank[job.level] || 1;
+    let expScore = 0;
+    if (avgProficiency >= requiredLevel) {
+      expScore = 20; // meets or exceeds
+    } else {
+      const diff = requiredLevel - avgProficiency;
+      if (diff <= 1) expScore = 12;
+      else if (diff <= 2) expScore = 5;
+    }
+
+    // --- Track component (max 20) ---
+    // If user has at least one skill matching the job → same career track area
+    let trackScore = 0;
+    if (matchedSkills.length > 0) {
+      trackScore = matchedSkills.length >= jobSkills.length * 0.5 ? 20 : 10;
+    }
+
+    const total = skillScore + expScore + trackScore;
+    return { total, skills: skillScore, experience: expScore, track: trackScore, matchedSkills };
+  };
+
+  const getMatchScore = (job) => getMatchDetails(job).total;
 
   const getMatchLabel = (score) => {
     if (score >= 80) return { text: 'Excellent Match', color: 'text-emerald-400' };
@@ -51,6 +111,12 @@ export default function Jobs() {
     if (score >= 60) return '#7c3aed';
     return '#f59e0b';
   };
+
+  // Derive user's average level label
+  const avgLevelLabel = avgProficiency >= 3.5 ? 'Professional'
+    : avgProficiency >= 2.5 ? 'Expert'
+    : avgProficiency >= 1.5 ? 'Intermediate'
+    : avgProficiency > 0 ? 'Beginner' : 'N/A';
 
   const filteredJobs = jobs.filter((j) => {
     const matchSearch = (j.title || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -87,18 +153,20 @@ export default function Jobs() {
               <div>
                 <h3 className="text-base font-bold text-white mb-2">Your Profile</h3>
                 <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-emerald-500/15 text-emerald-400 text-xs font-medium rounded-full">Intermediate</span>
-                  <span className="px-3 py-1 bg-pink-500/15 text-pink-400 text-xs font-medium rounded-full">Full Stack</span>
+                  <span className="px-3 py-1 bg-emerald-500/15 text-emerald-400 text-xs font-medium rounded-full">{avgLevelLabel}</span>
+                  <span className="px-3 py-1 bg-pink-500/15 text-pink-400 text-xs font-medium rounded-full">{userSkills.length} skills</span>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-500 mb-2">Skills ({user.skills?.length || 5})</div>
+                <div className="text-xs text-gray-500 mb-2">Skills ({userSkills.length})</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {['React', 'Python', 'Java', 'JavaScript', 'C, C++'].map((s, i) => (
-                    <span key={s} className={`px-2.5 py-1 border rounded-full text-xs ${skillColors[i % skillColors.length]}`}>
-                      {s}
+                  {userSkills.length > 0 ? userSkills.map((s, i) => (
+                    <span key={s.id} className={`px-2.5 py-1 border rounded-full text-xs ${skillColors[i % skillColors.length]}`}>
+                      {s.skill_name}
                     </span>
-                  ))}
+                  )) : (
+                    <span className="text-xs text-gray-600">No skills added yet — visit your Profile page</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -161,15 +229,17 @@ export default function Jobs() {
         ) : (
           <div className="space-y-4">
             {filteredJobs.map((job, idx) => {
-              const score = getMatchScore(job);
+              const details = getMatchDetails(job);
+              const score = details.total;
               const match = getMatchLabel(score);
               const scoreColor = getScoreColor(score);
               const circumference = 2 * Math.PI * 42;
               const dashArray = (score / 100) * circumference;
 
-              const skillsBreakdown = Math.min(60, score);
-              const expBreakdown = Math.min(20, Math.round((score / 100) * 20));
-              const trackBreakdown = Math.max(0, score - skillsBreakdown - expBreakdown);
+              const skillsBreakdown = details.skills;
+              const expBreakdown = details.experience;
+              const trackBreakdown = details.track;
+              const jobSkills = Array.isArray(job.skills) ? job.skills : [];
 
               return (
                 <div
@@ -210,23 +280,30 @@ export default function Jobs() {
 
                       {/* Skills */}
                       <div className="mb-4">
-                        <span className="text-xs text-gray-600 uppercase tracking-wider font-medium mb-2 block">Required Skills</span>
+                        <span className="text-xs text-gray-600 uppercase tracking-wider font-medium mb-2 block">Required Skills ({details.matchedSkills.length}/{jobSkills.length} matched)</span>
                         <div className="flex flex-wrap gap-1.5">
-                          {(Array.isArray(job.skills) ? job.skills : []).map((skill, i) => (
-                            <span key={i} className={`px-2.5 py-1 text-xs rounded-full border ${skillColors[i % skillColors.length]}`}>
-                              {skill}
-                            </span>
-                          ))}
+                          {jobSkills.map((skill, i) => {
+                            const isMatched = details.matchedSkills.includes(skill.toLowerCase());
+                            return (
+                              <span key={i} className={`px-2.5 py-1 text-xs rounded-full border ${
+                                isMatched
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                              }`}>
+                                {isMatched && '✓ '}{skill}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
 
                       <div className="flex flex-wrap gap-4 text-sm mb-4">
-                        <span className="flex items-center gap-1.5 text-emerald-400">
-                          <TrendingUp size={14} /> Perfect experience match
+                        <span className={`flex items-center gap-1.5 ${expBreakdown >= 15 ? 'text-emerald-400' : expBreakdown >= 8 ? 'text-amber-400' : 'text-gray-500'}`}>
+                          <TrendingUp size={14} /> {expBreakdown >= 20 ? 'Meets experience level' : expBreakdown >= 12 ? 'Close to required level' : 'Below required level'}
                         </span>
                         <span className="flex items-center gap-1.5 text-gray-500">
-                          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                          {score >= 80 ? 'Same track' : 'Different track'}
+                          <span className={`w-1.5 h-1.5 rounded-full ${trackBreakdown >= 15 ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                          {trackBreakdown >= 20 ? 'Same track' : trackBreakdown >= 10 ? 'Related track' : 'Different track'}
                         </span>
                       </div>
 

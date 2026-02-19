@@ -1,63 +1,184 @@
+-- ============================================================
+-- CareerPath — Complete Database Setup
+-- ============================================================
+-- This single file creates the database, ALL tables,
+-- foreign keys, and seed data from scratch.
+-- Run this once in MySQL Workbench and everything will work.
+-- ============================================================
+
+-- Create database (if not exists) and switch to it
+CREATE DATABASE IF NOT EXISTS cse3100_testA1;
 USE cse3100_testA1;
 
--- Add timestamps to users table if missing
-SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='cse3100_testA1' AND TABLE_NAME='users' AND COLUMN_NAME='created_at');
-SET @sql = IF(@col_exists = 0, 'ALTER TABLE users ADD COLUMN created_at TIMESTAMP NULL', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- Disable safe-update mode and FK checks for clean setup
+SET SQL_SAFE_UPDATES = 0;
+SET FOREIGN_KEY_CHECKS = 0;
 
-SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='cse3100_testA1' AND TABLE_NAME='users' AND COLUMN_NAME='updated_at');
-SET @sql = IF(@col_exists = 0, 'ALTER TABLE users ADD COLUMN updated_at TIMESTAMP NULL', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+-- ============================================================
+-- DROP existing tables (clean slate)
+-- ============================================================
+DROP TABLE IF EXISTS job_applications;
+DROP TABLE IF EXISTS user_skills;
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS contacts;
+DROP TABLE IF EXISTS personal_access_tokens;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS jobs;
+DROP TABLE IF EXISTS password_reset_tokens;
+DROP TABLE IF EXISTS failed_jobs;
+DROP TABLE IF EXISTS users;
 
-SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='cse3100_testA1' AND TABLE_NAME='users' AND COLUMN_NAME='remember_token');
-SET @sql = IF(@col_exists = 0, 'ALTER TABLE users ADD COLUMN remember_token VARCHAR(100) NULL', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET FOREIGN_KEY_CHECKS = 1;
 
--- Update existing user password to be hashed
-UPDATE users SET password = '$2y$12$LJ5QxKz1pSeMG9H7pHGVd.fGmAuAdQlZgxZPFnvICJPe74S04IShi' WHERE email = 'alice@example.com';
+-- ============================================================
+-- 1. users
+-- ============================================================
+CREATE TABLE users (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    email_verified_at TIMESTAMP NULL,
+    password VARCHAR(255) NOT NULL,
+    remember_token VARCHAR(100) NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
 
--- Jobs table
-CREATE TABLE IF NOT EXISTS jobs (
+-- ============================================================
+-- 2. password_reset_tokens
+-- ============================================================
+CREATE TABLE password_reset_tokens (
+    email VARCHAR(255) PRIMARY KEY,
+    token VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NULL
+);
+
+-- ============================================================
+-- 3. failed_jobs  (Laravel queue system)
+-- ============================================================
+CREATE TABLE failed_jobs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    uuid VARCHAR(255) NOT NULL UNIQUE,
+    connection TEXT NOT NULL,
+    queue TEXT NOT NULL,
+    payload LONGTEXT NOT NULL,
+    exception LONGTEXT NOT NULL,
+    failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- 4. personal_access_tokens  (Laravel Sanctum)
+-- ============================================================
+CREATE TABLE personal_access_tokens (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    tokenable_type VARCHAR(255) NOT NULL,
+    tokenable_id BIGINT UNSIGNED NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    token VARCHAR(64) NOT NULL UNIQUE,
+    abilities TEXT NULL,
+    last_used_at TIMESTAMP NULL,
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    INDEX personal_access_tokens_tokenable_type_tokenable_id_index (tokenable_type, tokenable_id)
+);
+
+-- ============================================================
+-- 5. posts  (user blog posts)
+-- ============================================================
+CREATE TABLE posts (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- 6. jobs  (job listings)
+-- ============================================================
+CREATE TABLE jobs (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     company VARCHAR(255) NOT NULL,
     location VARCHAR(255) DEFAULT 'Remote',
     type VARCHAR(255) DEFAULT 'Full-time',
     level VARCHAR(255) DEFAULT 'Entry Level',
-    description TEXT,
-    salary_min INT,
-    salary_max INT,
-    track VARCHAR(255),
-    skills JSON,
+    description TEXT NULL,
+    salary_min INT NULL,
+    salary_max INT NULL,
+    track VARCHAR(255) NULL,
+    skills JSON NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
 );
 
--- Courses table
-CREATE TABLE IF NOT EXISTS courses (
+-- ============================================================
+-- 7. courses
+-- ============================================================
+CREATE TABLE courses (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    description TEXT,
-    topic VARCHAR(255),
-    instructor VARCHAR(255),
-    duration VARCHAR(255),
+    description TEXT NULL,
+    topic VARCHAR(255) NULL,
+    instructor VARCHAR(255) NULL,
+    duration VARCHAR(255) NULL,
     level VARCHAR(255) DEFAULT 'Beginner',
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL
 );
 
--- Enrollments table
-CREATE TABLE IF NOT EXISTS enrollments (
+-- ============================================================
+-- 8. enrollments  (user ↔ course)
+-- ============================================================
+CREATE TABLE enrollments (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     course_id BIGINT UNSIGNED NOT NULL,
     created_at TIMESTAMP NULL,
     updated_at TIMESTAMP NULL,
-    UNIQUE KEY unique_enrollment (user_id, course_id)
+    UNIQUE KEY unique_enrollment (user_id, course_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
 
--- Contacts table
-CREATE TABLE IF NOT EXISTS contacts (
+-- ============================================================
+-- 9. user_skills  (user profile skills)
+-- ============================================================
+CREATE TABLE user_skills (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    skill_name VARCHAR(255) NOT NULL,
+    proficiency ENUM('Beginner', 'Intermediate', 'Expert', 'Professional') DEFAULT 'Beginner',
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_user_skill (user_id, skill_name),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- 10. job_applications  (user ↔ job)
+-- ============================================================
+CREATE TABLE job_applications (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    job_id BIGINT UNSIGNED NOT NULL,
+    status ENUM('Pending', 'Reviewed', 'Shortlisted', 'Accepted', 'Rejected') DEFAULT 'Pending',
+    applied_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_application (user_id, job_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- 11. contacts  (contact-us form messages)
+-- ============================================================
+CREATE TABLE contacts (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -67,22 +188,32 @@ CREATE TABLE IF NOT EXISTS contacts (
     updated_at TIMESTAMP NULL
 );
 
--- Personal access tokens (for Sanctum)
-CREATE TABLE IF NOT EXISTS personal_access_tokens (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    tokenable_type VARCHAR(255) NOT NULL,
-    tokenable_id BIGINT UNSIGNED NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    token VARCHAR(64) NOT NULL,
-    abilities TEXT,
-    last_used_at TIMESTAMP NULL,
-    expires_at TIMESTAMP NULL,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL,
-    UNIQUE KEY personal_access_tokens_token_unique (token)
-);
 
--- Seed Jobs
+-- ############################################################
+--                     SEED DATA
+-- ############################################################
+
+-- ============================================================
+-- Seed: users
+-- Password for all seeded users is: password123
+-- (bcrypt hash of "password123")
+-- ============================================================
+INSERT INTO users (name, email, password, created_at, updated_at) VALUES
+('Alice Johnson', 'alice@example.com', '$2y$12$LJ5QxKz1pSeMG9H7pHGVd.fGmAuAdQlZgxZPFnvICJPe74S04IShi', NOW(), NOW()),
+('Bob Rahman', 'bob@example.com', '$2y$12$LJ5QxKz1pSeMG9H7pHGVd.fGmAuAdQlZgxZPFnvICJPe74S04IShi', NOW(), NOW()),
+('Fatema Akter', 'fatema@example.com', '$2y$12$LJ5QxKz1pSeMG9H7pHGVd.fGmAuAdQlZgxZPFnvICJPe74S04IShi', NOW(), NOW());
+
+-- ============================================================
+-- Seed: posts
+-- ============================================================
+INSERT INTO posts (user_id, title, content, created_at, updated_at) VALUES
+(1, 'My First Post', 'This is the content of my first post.', NOW(), NOW()),
+(1, 'Getting Started with React', 'React is a JavaScript library for building user interfaces. Here are my thoughts after learning it...', NOW(), NOW()),
+(2, 'Laravel Tips & Tricks', 'Some useful Laravel patterns I have discovered while building APIs.', NOW(), NOW());
+
+-- ============================================================
+-- Seed: jobs  (10 jobs)
+-- ============================================================
 INSERT INTO jobs (title, company, location, type, level, description, salary_min, salary_max, track, skills, created_at, updated_at) VALUES
 ('Junior Frontend Developer', 'TechBD Solutions', 'Dhaka, Bangladesh', 'Full-time', 'Entry Level', 'Build responsive UIs using React and modern CSS frameworks. Work with our design team to implement pixel-perfect interfaces.', 25000, 45000, 'Software Engineering', '["React", "JavaScript", "CSS", "HTML", "Tailwind CSS"]', NOW(), NOW()),
 ('Backend Developer', 'DataSoft Systems', 'Chittagong, Bangladesh', 'Full-time', 'Mid Level', 'Design and implement RESTful APIs using Laravel. Optimize database queries and manage deployment pipelines.', 50000, 80000, 'Software Engineering', '["PHP", "Laravel", "MySQL", "REST API", "Docker"]', NOW(), NOW()),
@@ -95,7 +226,9 @@ INSERT INTO jobs (title, company, location, type, level, description, salary_min
 ('Full Stack Developer', 'Selise Digital Platforms', 'Remote', 'Remote', 'Senior', 'Lead full-stack development projects using modern frameworks. Mentor junior developers and conduct code reviews.', 90000, 140000, 'Software Engineering', '["React", "Node.js", "TypeScript", "PostgreSQL", "AWS"]', NOW(), NOW()),
 ('Content Writer - Tech', 'Bohubrihi', 'Remote', 'Part-time', 'Entry Level', 'Write engaging technical content for online courses and blog posts. Research trending technologies and create learning materials.', 15000, 30000, 'Content & Marketing', '["Technical Writing", "SEO", "Research", "Content Strategy", "WordPress"]', NOW(), NOW());
 
--- Seed Courses
+-- ============================================================
+-- Seed: courses  (9 courses)
+-- ============================================================
 INSERT INTO courses (name, description, topic, instructor, duration, level, created_at, updated_at) VALUES
 ('Complete Web Development Bootcamp', 'Learn HTML, CSS, JavaScript, React, Node.js, and MongoDB in this comprehensive bootcamp. Build 10+ real-world projects.', 'Web Development', 'Dr. Kamal Hossain', '12 weeks', 'Beginner', NOW(), NOW()),
 ('Python for Data Science & AI', 'Master Python programming with focus on data analysis, visualization, and machine learning fundamentals using pandas, numpy, and scikit-learn.', 'Data Science', 'Prof. Nusrat Jahan', '8 weeks', 'Intermediate', NOW(), NOW()),
@@ -106,3 +239,81 @@ INSERT INTO courses (name, description, topic, instructor, duration, level, crea
 ('Cybersecurity Essentials', 'Understand network security, ethical hacking basics, and security best practices for modern applications.', 'Cybersecurity', 'Prof. Mohammad Ali', '8 weeks', 'Intermediate', NOW(), NOW()),
 ('Machine Learning A-Z', 'Comprehensive ML course covering supervised and unsupervised learning, neural networks, and model deployment.', 'Artificial Intelligence', 'Dr. Shirin Akter', '14 weeks', 'Advanced', NOW(), NOW()),
 ('Digital Marketing for Tech Products', 'Learn SEO, social media marketing, content strategy, and analytics for technology products and startups.', 'Marketing', 'Farhana Sultana', '4 weeks', 'Beginner', NOW(), NOW());
+
+-- ============================================================
+-- Seed: enrollments  (Alice & Bob enrolled in courses)
+-- ============================================================
+INSERT INTO enrollments (user_id, course_id, created_at, updated_at) VALUES
+(1, 1, NOW(), NOW()),   -- Alice → Web Development Bootcamp
+(1, 3, NOW(), NOW()),   -- Alice → React Native
+(1, 5, NOW(), NOW()),   -- Alice → Advanced Laravel
+(2, 2, NOW(), NOW()),   -- Bob → Python for Data Science
+(2, 4, NOW(), NOW()),   -- Bob → Cloud Computing
+(3, 1, NOW(), NOW()),   -- Fatema → Web Development Bootcamp
+(3, 6, NOW(), NOW());   -- Fatema → UI/UX Design
+
+-- ============================================================
+-- Seed: user_skills  (skills for Alice, Bob, Fatema)
+-- ============================================================
+INSERT INTO user_skills (user_id, skill_name, proficiency) VALUES
+-- Alice's skills
+(1, 'React', 'Intermediate'),
+(1, 'JavaScript', 'Intermediate'),
+(1, 'HTML', 'Expert'),
+(1, 'CSS', 'Expert'),
+(1, 'Tailwind CSS', 'Beginner'),
+(1, 'Python', 'Beginner'),
+(1, 'SQL', 'Intermediate'),
+(1, 'Laravel', 'Beginner'),
+(1, 'Git', 'Professional'),
+-- Bob's skills
+(2, 'Python', 'Expert'),
+(2, 'SQL', 'Professional'),
+(2, 'Machine Learning', 'Intermediate'),
+(2, 'Docker', 'Beginner'),
+(2, 'AWS', 'Beginner'),
+-- Fatema's skills
+(3, 'HTML', 'Professional'),
+(3, 'CSS', 'Professional'),
+(3, 'Figma', 'Expert'),
+(3, 'JavaScript', 'Intermediate'),
+(3, 'React', 'Beginner');
+
+-- ============================================================
+-- Seed: job_applications  (users applying to jobs)
+-- ============================================================
+INSERT INTO job_applications (user_id, job_id, status) VALUES
+(1, 1, 'Pending'),       -- Alice → Junior Frontend Developer
+(1, 7, 'Reviewed'),      -- Alice → Mobile App Developer
+(1, 9, 'Shortlisted'),   -- Alice → Full Stack Developer
+(2, 3, 'Pending'),       -- Bob → Data Analyst Intern
+(2, 4, 'Reviewed'),      -- Bob → Machine Learning Engineer
+(3, 5, 'Accepted');      -- Fatema → UI/UX Designer
+
+-- ============================================================
+-- Seed: contacts  (sample contact messages)
+-- ============================================================
+INSERT INTO contacts (name, email, subject, message, created_at, updated_at) VALUES
+('Rafiq Hasan', 'rafiq@gmail.com', 'Course Suggestion', 'Can you add a course on DevOps and CI/CD pipelines? That would be really helpful for my career.', NOW(), NOW()),
+('Sadia Islam', 'sadia@gmail.com', 'Job Listing Issue', 'I noticed the salary range for the Backend Developer position seems incorrect. Could you verify?', NOW(), NOW());
+
+-- Re-enable safe-update mode
+SET SQL_SAFE_UPDATES = 1;
+
+-- ============================================================
+-- Done! All tables created and seeded.
+-- ============================================================
+-- Tables: users, password_reset_tokens, failed_jobs,
+--         personal_access_tokens, posts, jobs, courses,
+--         enrollments, user_skills, job_applications, contacts
+--
+-- Sample login credentials:
+--   Email:    alice@example.com
+--   Password: password123
+--
+--   Email:    bob@example.com
+--   Password: password123
+--
+--   Email:    fatema@example.com
+--   Password: password123
+-- ============================================================

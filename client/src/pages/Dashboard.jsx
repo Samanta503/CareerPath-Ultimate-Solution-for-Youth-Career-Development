@@ -42,7 +42,7 @@ export default function Dashboard() {
     { icon: Target, label: 'Find Matching Jobs', desc: 'AI-powered job matching based on your skills', link: '/jobs', iconColor: 'text-[#8b5cf6]', iconBg: 'bg-[#7c3aed]/12' },
     { icon: BookOpen, label: 'Browse Courses', desc: 'Explore learning resources to grow your skills', link: '/resources', iconColor: 'text-[#ec4899]', iconBg: 'bg-[#ec4899]/12' },
     { icon: Users, label: 'Contact Support', desc: 'Get help with your career development', link: '/contact', iconColor: 'text-emerald-400', iconBg: 'bg-emerald-500/12' },
-    { icon: Star, label: 'Update Profile', desc: 'Keep your skills and experience up to date', link: '/dashboard', iconColor: 'text-amber-400', iconBg: 'bg-amber-500/12' },
+    { icon: Star, label: 'Update Profile', desc: 'Keep your skills and experience up to date', link: '/profile', iconColor: 'text-amber-400', iconBg: 'bg-amber-500/12' },
   ];
 
   return (

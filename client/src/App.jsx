@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Jobs from './pages/Jobs';
 import Resources from './pages/Resources';
 import Contact from './pages/Contact';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </main>
         <Footer />

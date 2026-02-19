@@ -35,6 +35,7 @@ export default function Navbar() {
   const navLinks = user
     ? [
         { to: '/dashboard', label: 'Dashboard' },
+        { to: '/profile', label: 'Profile' },
         { to: '/jobs', label: 'Jobs' },
         { to: '/resources', label: 'Resources' },
         { to: '/contact', label: 'Contact' },
@@ -145,6 +146,13 @@ export default function Navbar() {
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-[#7c3aed]/10 transition-colors duration-150"
                     >
                       Dashboard
+                    </Link>
+                    <Link
+                      to="/profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-[#7c3aed]/10 transition-colors duration-150"
+                    >
+                      Profile
                     </Link>
                     <button
                       onClick={() => { logout(); setUserMenuOpen(false); navigate('/'); }}
