@@ -1,12 +1,13 @@
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { Briefcase, BookOpen, TrendingUp, Target, Award, ArrowRight, Users, Star, Calendar, BarChart3 } from 'lucide-react';
+import { Briefcase, BookOpen, TrendingUp, Target, Award, ArrowRight, Users, Star, MapPin, Building2, Send } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({ jobs: 0, courses: 0, enrollments: 0 });
+  const [allJobs, setAllJobs] = useState([]);
   const [userSkills, setUserSkills] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -20,7 +21,9 @@ export default function Dashboard() {
           user ? api.get(`/user-skills?user_id=${user.id}`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         ]);
         const skills = Array.isArray(skillsRes.data) ? skillsRes.data : [];
+        const jobsList = Array.isArray(jobsRes.data) ? jobsRes.data : [];
         setUserSkills(skills);
+        setAllJobs(jobsList);
         setStats({
           jobs: Array.isArray(jobsRes.data) ? jobsRes.data.length : 0,
           courses: Array.isArray(coursesRes.data) ? coursesRes.data.length : 0,
@@ -44,6 +47,37 @@ export default function Dashboard() {
     : avgProficiency >= 2.5 ? 'Expert'
     : avgProficiency >= 1.5 ? 'Intermediate'
     : avgProficiency > 0 ? 'Beginner' : 'N/A';
+
+  // --- Real match calculation (same as Jobs page) ---
+  const jobLevelRank = { 'Entry Level': 1, 'Mid Level': 2, Senior: 3 };
+  const userSkillNames = userSkills.map(s => (s.skill_name || '').toLowerCase());
+
+  const getMatchDetails = (job) => {
+    if (!user || userSkills.length === 0) return { total: 0, skills: 0, experience: 0, track: 0, matchedSkills: [] };
+    const jobSkills = (Array.isArray(job.skills) ? job.skills : []).map(s => s.toLowerCase());
+    let matchedSkills = [];
+    let skillScore = 0;
+    if (jobSkills.length > 0) {
+      matchedSkills = jobSkills.filter(js => userSkillNames.includes(js));
+      skillScore = Math.round((matchedSkills.length / jobSkills.length) * 60);
+    }
+    const requiredLevel = jobLevelRank[job.level] || 1;
+    let expScore = 0;
+    if (avgProficiency >= requiredLevel) expScore = 20;
+    else { const diff = requiredLevel - avgProficiency; if (diff <= 1) expScore = 12; else if (diff <= 2) expScore = 5; }
+    let trackScore = 0;
+    if (matchedSkills.length > 0) trackScore = matchedSkills.length >= jobSkills.length * 0.5 ? 20 : 10;
+    return { total: skillScore + expScore + trackScore, skills: skillScore, experience: expScore, track: trackScore, matchedSkills };
+  };
+
+  const getScoreColor = (score) => score >= 80 ? '#10b981' : score >= 60 ? '#7c3aed' : '#f59e0b';
+  const getMatchLabel = (score) => score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Fair';
+
+  // Top 3 recommended jobs sorted by match score
+  const recommendedJobs = [...allJobs]
+    .map(job => ({ ...job, matchDetails: getMatchDetails(job) }))
+    .sort((a, b) => b.matchDetails.total - a.matchDetails.total)
+    .slice(0, 3);
 
   const dashCards = [
     { icon: Briefcase, label: 'Available Jobs', value: stats.jobs, gradient: 'from-[#7c3aed] to-[#6d28d9]', glow: '#7c3aed', link: '/jobs' },
@@ -127,6 +161,93 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Recommended Jobs */}
+        {user && recommendedJobs.length > 0 && (
+          <div className="mb-10">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Recommended Jobs</h2>
+              <Link to="/jobs" className="text-xs text-[#8b5cf6] hover:text-[#a78bfa] transition-colors">View all jobs →</Link>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {recommendedJobs.map((job) => {
+                const d = job.matchDetails;
+                const scoreColor = getScoreColor(d.total);
+                const label = getMatchLabel(d.total);
+                const jobSkills = Array.isArray(job.skills) ? job.skills : [];
+                const circumference = 2 * Math.PI * 30;
+                const dashArray = (d.total / 100) * circumference;
+                return (
+                  <div key={job.id} className="bg-[#111128]/80 border border-[#2a2a5a]/60 rounded-2xl p-5 hover:border-[#7c3aed]/25 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-[#7c3aed]/5 flex flex-col">
+                    {/* Match circle + title */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="relative w-14 h-14 shrink-0">
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 70 70">
+                          <circle cx="35" cy="35" r="30" fill="none" stroke="#1a1a3e" strokeWidth="4" />
+                          <circle cx="35" cy="35" r="30" fill="none" stroke={scoreColor} strokeWidth="4" strokeDasharray={`${dashArray} ${circumference}`} strokeLinecap="round" />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xs font-bold text-white">{d.total}%</span>
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-white truncate">{job.title}</h3>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                          <Building2 size={11} /> <span className="truncate">{job.company}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-0.5">
+                          <MapPin size={11} /> <span className="truncate">{job.location}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Match label */}
+                    <span className="text-xs font-semibold mb-3" style={{ color: scoreColor }}>{label} Match</span>
+
+                    {/* Skills preview */}
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {jobSkills.slice(0, 4).map((skill, i) => {
+                        const matched = d.matchedSkills.includes(skill.toLowerCase());
+                        return (
+                          <span key={i} className={`px-2 py-0.5 text-[10px] rounded-full border ${
+                            matched ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+                          }`}>
+                            {matched && '✓ '}{skill}
+                          </span>
+                        );
+                      })}
+                      {jobSkills.length > 4 && <span className="text-[10px] text-gray-600 px-1">+{jobSkills.length - 4}</span>}
+                    </div>
+
+                    {/* Breakdown bars */}
+                    <div className="space-y-1.5 mb-4">
+                      {[
+                        { label: 'Skills', val: d.skills, max: 60 },
+                        { label: 'Exp', val: d.experience, max: 20 },
+                        { label: 'Track', val: d.track, max: 20 },
+                      ].map(b => (
+                        <div key={b.label} className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-500 w-8">{b.label}</span>
+                          <div className="flex-1 h-1 bg-[#1a1a3e] rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${(b.val / b.max) * 100}%`, backgroundColor: scoreColor }} />
+                          </div>
+                          <span className="text-[10px] text-gray-400 w-8 text-right">{b.val}/{b.max}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Apply button */}
+                    <Link to="/jobs" className="mt-auto">
+                      <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-linear-to-r from-[#7c3aed] to-[#ec4899] rounded-xl text-white text-xs font-semibold hover:shadow-lg hover:shadow-[#7c3aed]/20 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
+                        <Send size={12} /> Apply Now
+                      </button>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="mb-3 flex items-center justify-between">
