@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { Briefcase, BookOpen, TrendingUp, Target, Award, ArrowRight, Users, Star, MapPin, Building2, Send, Zap, BarChart3, Clock } from 'lucide-react';
+import { Briefcase, BookOpen, TrendingUp, Target, Award, ArrowRight, Users, Star, MapPin, Building2, Send, Zap, BarChart3, Clock, AlertTriangle, Lightbulb } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 
@@ -8,6 +8,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState({ jobs: 0, courses: 0, enrollments: 0 });
   const [allJobs, setAllJobs] = useState([]);
+  const [allCourses, setAllCourses] = useState([]);
   const [userSkills, setUserSkills] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -22,8 +23,10 @@ export default function Dashboard() {
         ]);
         const skills = Array.isArray(skillsRes.data) ? skillsRes.data : [];
         const jobsList = Array.isArray(jobsRes.data) ? jobsRes.data : [];
+        const coursesList = Array.isArray(coursesRes.data) ? coursesRes.data : [];
         setUserSkills(skills);
         setAllJobs(jobsList);
+        setAllCourses(coursesList);
         setStats({
           jobs: Array.isArray(jobsRes.data) ? jobsRes.data.length : 0,
           courses: Array.isArray(coursesRes.data) ? coursesRes.data.length : 0,
@@ -340,6 +343,199 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* ───── Skill Gap Analysis & Course Recommendations ───── */}
+        {user && userSkills.length > 0 && allJobs.length > 0 && (() => {
+          // Collect all required skills from jobs, count frequency
+          const skillFrequency = {};
+          allJobs.forEach(job => {
+            const jSkills = Array.isArray(job.skills) ? job.skills : [];
+            jSkills.forEach(sk => {
+              const lower = sk.toLowerCase();
+              if (!userSkillNames.includes(lower)) {
+                skillFrequency[sk] = (skillFrequency[sk] || 0) + 1;
+              }
+            });
+          });
+
+          // Sort missing skills by how many jobs require them
+          const missingSkills = Object.entries(skillFrequency)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
+
+          if (missingSkills.length === 0) return null;
+
+          // Map each missing skill to the best matching course
+          const courseKeywords = {
+            'react': ['web development', 'react', 'frontend'],
+            'node.js': ['web development', 'node', 'backend', 'api'],
+            'javascript': ['web development', 'javascript', 'frontend'],
+            'typescript': ['web development', 'typescript', 'react native'],
+            'python': ['python', 'data science', 'machine learning'],
+            'sql': ['data science', 'python', 'backend'],
+            'html': ['web development'],
+            'css': ['web development', 'design'],
+            'tailwind css': ['web development'],
+            'laravel': ['laravel', 'api', 'backend'],
+            'rest api': ['laravel', 'api', 'web development', 'react native'],
+            'git': ['web development'],
+            'docker': ['cloud', 'devops', 'aws'],
+            'kubernetes': ['cloud', 'devops', 'aws'],
+            'aws': ['cloud', 'aws'],
+            'jenkins': ['cloud', 'devops'],
+            'linux': ['cloud', 'cybersecurity'],
+            'react native': ['react native', 'mobile'],
+            'figma': ['design', 'ui/ux'],
+            'adobe xd': ['design', 'ui/ux'],
+            'user research': ['design', 'ui/ux'],
+            'prototyping': ['design', 'ui/ux'],
+            'design systems': ['design', 'ui/ux'],
+            'tensorflow': ['machine learning', 'ai', 'python'],
+            'pytorch': ['machine learning', 'ai', 'python'],
+            'mlops': ['machine learning', 'cloud'],
+            'machine learning': ['machine learning', 'ai'],
+            'excel': ['data science'],
+            'power bi': ['data science'],
+            'statistics': ['data science', 'python'],
+            'network security': ['cybersecurity', 'security'],
+            'siem': ['cybersecurity'],
+            'penetration testing': ['cybersecurity', 'security'],
+            'postgresql': ['backend', 'web development', 'laravel'],
+            'mongodb': ['web development', 'backend'],
+            'technical writing': ['marketing', 'digital marketing'],
+            'seo': ['marketing', 'digital marketing'],
+            'content strategy': ['marketing', 'digital marketing'],
+            'wordpress': ['web development', 'marketing'],
+          };
+
+          const findCourse = (skillName) => {
+            const lower = skillName.toLowerCase();
+            const keywords = courseKeywords[lower] || [lower];
+            let bestCourse = null;
+            let bestScore = 0;
+            allCourses.forEach(course => {
+              const haystack = `${course.name} ${course.topic} ${course.description}`.toLowerCase();
+              let score = 0;
+              keywords.forEach(kw => { if (haystack.includes(kw)) score++; });
+              if (score > bestScore) { bestScore = score; bestCourse = course; }
+            });
+            return bestCourse;
+          };
+
+          // Build recommendations: unique courses with the skills they cover
+          const courseMap = new Map();
+          missingSkills.forEach(([skill]) => {
+            const course = findCourse(skill);
+            if (course) {
+              if (!courseMap.has(course.id)) {
+                courseMap.set(course.id, { course, skills: [], demand: 0 });
+              }
+              const entry = courseMap.get(course.id);
+              entry.skills.push(skill);
+              entry.demand += skillFrequency[skill];
+            }
+          });
+
+          const recommendations = [...courseMap.values()]
+            .sort((a, b) => b.demand - a.demand)
+            .slice(0, 4);
+
+          return (
+            <div className="mb-10">
+              <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                    <Lightbulb size={16} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-white uppercase tracking-wide">Skill Gap Analysis</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">Skills you're missing & courses to fill the gap</p>
+                  </div>
+                </div>
+                <Link to="/resources" className="text-sm text-[#8b5cf6] hover:text-[#a78bfa] transition-colors font-medium">
+                  All Courses →
+                </Link>
+              </div>
+
+              {/* Missing Skills Overview */}
+              <div className="bg-[#111128]/60 backdrop-blur-sm border border-[#2a2a5a]/40 rounded-2xl p-6 mb-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertTriangle size={15} className="text-amber-400" />
+                  <h3 className="text-sm font-semibold text-white">In-Demand Skills You're Missing</h3>
+                  <span className="text-xs text-gray-500 ml-auto">{missingSkills.length} skills found across {allJobs.length} jobs</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {missingSkills.map(([skill, count]) => (
+                    <div key={skill} className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/40 transition-all duration-200">
+                      <span className="text-sm text-amber-300 font-medium">{skill}</span>
+                      <span className="text-[10px] text-amber-500/70 bg-amber-500/10 px-1.5 py-0.5 rounded-md font-mono">
+                        {count} {count === 1 ? 'job' : 'jobs'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recommended Courses */}
+              {recommendations.length > 0 && (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {recommendations.map(({ course, skills, demand }) => (
+                    <div key={course.id} className="group bg-[#111128]/60 backdrop-blur-sm border border-[#2a2a5a]/40 rounded-2xl p-5 hover:border-[#7c3aed]/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl flex flex-col">
+                      {/* Course header */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7c3aed] to-[#ec4899] flex items-center justify-center shrink-0">
+                          <BookOpen size={18} className="text-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-bold text-white leading-snug group-hover:text-[#8b5cf6] transition-colors">{course.name}</h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">{course.topic}</span>
+                            {course.duration && (
+                              <>
+                                <span className="text-gray-700">·</span>
+                                <span className="text-xs text-gray-500 flex items-center gap-1"><Clock size={10} />{course.duration}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Skills this course addresses */}
+                      <div className="mb-3">
+                        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block mb-1.5">Fills skill gaps in:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {skills.map(sk => (
+                            <span key={sk} className="px-2 py-1 text-xs font-medium rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              + {sk}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Impact indicator */}
+                      <div className="flex items-center gap-2 mb-4 mt-auto">
+                        <div className="flex-1 h-1.5 bg-[#1a1a3e] rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-[#7c3aed] to-[#ec4899] transition-all duration-700"
+                            style={{ width: `${Math.min((demand / allJobs.length) * 100, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          Unlocks {demand} job{demand !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+
+                      {/* CTA */}
+                      <Link to="/resources" className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white/[0.04] border border-[#2a2a5a]/60 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:border-[#7c3aed]/40 hover:bg-[#7c3aed]/5 transition-all duration-200">
+                        <BookOpen size={14} /> Enroll in Course
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ───── Quick Actions ───── */}
         <div className="mb-5 flex items-center gap-3">
