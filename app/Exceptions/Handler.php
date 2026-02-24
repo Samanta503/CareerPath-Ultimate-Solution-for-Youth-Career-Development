@@ -3,6 +3,9 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\AuthenticationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -30,18 +33,29 @@ class Handler extends ExceptionHandler
 
     public function render($request, Throwable $exception)
     {
-        if ($exception instanceof BadRequestException) {
-            return response()->json([
-                'message' => $exception->getMessage(),
-            ], 400);
+        // Let Laravel handle validation errors normally (422)
+        if ($exception instanceof ValidationException) {
+            return parent::render($request, $exception);
         }
 
-        // Default response for unexpected exceptions
-        return response()->json([
-            'error' => true,
-            'message' => 'An unexpected error occurred',
-        ], 500);
+        // Let Laravel handle auth errors normally (401)
+        if ($exception instanceof AuthenticationException) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
 
+        // Let Laravel handle HTTP exceptions (404, 403, etc.)
+        if ($exception instanceof HttpException) {
+            return parent::render($request, $exception);
+        }
+
+        // For API requests, return JSON error
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'error' => true,
+                'message' => config('app.debug') ? $exception->getMessage() : 'An unexpected error occurred',
+            ], 500);
+        }
+
+        return parent::render($request, $exception);
     }
-
 }

@@ -45,8 +45,12 @@ COPY docker/nginx/backend.conf /etc/nginx/sites-available/default
 # Copy Supervisor config
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Copy startup script
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 # Expose port
 EXPOSE 8000
 
-# Start with supervisor (nginx + php-fpm)
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Start with the entrypoint script (creates .env, caches config, then starts supervisor)
+CMD ["/usr/local/bin/start.sh"]

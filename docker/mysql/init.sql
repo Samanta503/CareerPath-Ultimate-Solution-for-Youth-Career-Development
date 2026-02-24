@@ -213,9 +213,9 @@ CREATE TABLE contacts (
 
 -- Seed: users  (password for all: password123)
 INSERT INTO users (name, email, password, created_at, updated_at) VALUES
-('Alice Johnson', 'alice@example.com', '$2y$12$LJ5QxKz1pSeMG9H7pHGVd.fGmAuAdQlZgxZPFnvICJPe74S04IShi', NOW(), NOW()),
-('Bob Rahman', 'bob@example.com', '$2y$12$LJ5QxKz1pSeMG9H7pHGVd.fGmAuAdQlZgxZPFnvICJPe74S04IShi', NOW(), NOW()),
-('Fatema Akter', 'fatema@example.com', '$2y$12$LJ5QxKz1pSeMG9H7pHGVd.fGmAuAdQlZgxZPFnvICJPe74S04IShi', NOW(), NOW());
+('Alice Johnson', 'alice@example.com', '$2y$12$B/67T1Tqi5E1GZS8diwCF.qfwRL4A/9REmU3q1q1Nobio9Zv2SGPa', NOW(), NOW()),
+('Bob Rahman', 'bob@example.com', '$2y$12$B/67T1Tqi5E1GZS8diwCF.qfwRL4A/9REmU3q1q1Nobio9Zv2SGPa', NOW(), NOW()),
+('Fatema Akter', 'fatema@example.com', '$2y$12$B/67T1Tqi5E1GZS8diwCF.qfwRL4A/9REmU3q1q1Nobio9Zv2SGPa', NOW(), NOW());
 
 -- Seed: posts
 INSERT INTO posts (user_id, title, content, created_at, updated_at) VALUES
