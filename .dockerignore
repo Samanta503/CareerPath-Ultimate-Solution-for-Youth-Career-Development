@@ -1,0 +1,13 @@
+# Backend .dockerignore
+node_modules
+client/node_modules
+client/dist
+.git
+.env
+.env.local
+*.md
+tests
+storage/logs/*.log
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
