@@ -12,30 +12,44 @@ class UserSkillController extends Controller
      */
     public function index(Request $request)
     {
-        $query = UserSkill::orderBy('skill_name');
-        if ($userId = $request->query('user_id')) {
-            $query->where('user_id', $userId);
+        $userId = $request->query('user_id');
+
+        if ($userId) {
+            return response()->json(
+                UserSkill::where('user_id', $userId)->orderBy('skill_name')->get()
+            );
         }
-        return response()->json($query->get());
+
+        return response()->json(UserSkill::orderBy('skill_name')->get());
     }
 
     /**
-     * Add or update a user's skill.
+     * Add a new skill for a user.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'user_id'    => 'required|exists:users,id',
-            'skill_name' => 'required|string|max:255',
-            'proficiency'=> 'required|in:Beginner,Intermediate,Expert,Professional',
+            'user_id'     => 'required|exists:users,id',
+            'skill_name'  => 'required|string|max:255',
+            'proficiency'  => 'required|in:Beginner,Intermediate,Expert,Professional',
         ]);
 
-        $skill = UserSkill::updateOrCreate(
-            ['user_id' => $request->user_id, 'skill_name' => $request->skill_name],
-            ['proficiency' => $request->proficiency]
-        );
+        $existing = UserSkill::where('user_id', $request->user_id)
+            ->where('skill_name', $request->skill_name)
+            ->first();
 
-        return response()->json($skill, $skill->wasRecentlyCreated ? 201 : 200);
+        if ($existing) {
+            $existing->update(['proficiency' => $request->proficiency]);
+            return response()->json($existing, 200);
+        }
+
+        $skill = UserSkill::create([
+            'user_id'    => $request->user_id,
+            'skill_name' => $request->skill_name,
+            'proficiency' => $request->proficiency,
+        ]);
+
+        return response()->json($skill, 201);
     }
 
     /**
@@ -43,13 +57,15 @@ class UserSkillController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $skill = UserSkill::findOrFail($id);
+
         $request->validate([
             'skill_name'  => 'sometimes|string|max:255',
-            'proficiency' => 'sometimes|in:Beginner,Intermediate,Expert,Professional',
+            'proficiency'  => 'sometimes|in:Beginner,Intermediate,Expert,Professional',
         ]);
 
-        $skill = UserSkill::findOrFail($id);
         $skill->update($request->only(['skill_name', 'proficiency']));
+
         return response()->json($skill);
     }
 
