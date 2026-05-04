@@ -70,10 +70,9 @@ GEMINI_API_KEY=...
 
 **After:**
 ```env
-CLOUDINARY_CLOUD_NAME=dxn2unmsk
-CLOUDINARY_API_KEY=879314239296622
-CLOUDINARY_API_SECRET=bmp1GkyXr2PtVmN7fN9nmanFteo
-
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 GEMINI_API_KEY=***REDACTED***
 
 FILESTACK_API_KEY=AoJV0pLvS6G2djg8XhdpAz
@@ -154,7 +153,7 @@ careerpath-frontend   Up N seconds
 ```bash
 # Check .env file in container
 docker compose exec backend grep FILESTACK .env
-# Should show: FILESTACK_API_KEY=AoJV0pLvS6G2djg8XhdpAz
+# Should show: FILESTACK_API_KEY=
 ```
 
 Or check Laravel config:
