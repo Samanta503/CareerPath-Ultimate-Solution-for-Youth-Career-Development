@@ -18,10 +18,13 @@ const FALLBACK_COURSE_IMAGE = 'https://images.unsplash.com/photo-1516321318423-f
 const InjectStyles = () => (
   <style>{`
     @keyframes morphBlob1 {
+    
       0%, 100% { border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%; transform: rotate(0deg) scale(1); }
       25% { border-radius: 70% 30% 50% 50% / 30% 60% 40% 70%; transform: rotate(90deg) scale(1.05); }
       50% { border-radius: 30% 70% 40% 60% / 55% 30% 70% 45%; transform: rotate(180deg) scale(0.95); }
+    
       75% { border-radius: 55% 45% 60% 40% / 40% 70% 30% 60%; transform: rotate(270deg) scale(1.02); }
+ 
     }
     @keyframes morphBlob2 {
       0%, 100% { border-radius: 58% 42% 30% 70% / 55% 45% 55% 45%; transform: rotate(0deg); }
