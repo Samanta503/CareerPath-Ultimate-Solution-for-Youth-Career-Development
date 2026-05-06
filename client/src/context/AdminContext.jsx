@@ -4,7 +4,8 @@ import api from '../utils/api';
 const AdminContext = createContext(null);
 
 export function AdminProvider({ children }) {
-  const [admin, setAdmin] = useState(null);
+     
+  const  [admin, setAdmin] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
