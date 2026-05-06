@@ -14,6 +14,7 @@ export default function AdminJobsPage() {
   const [formData, setFormData] = useState({
     title: '',
     company: '',
+      
     location: '',
     type: 'Full-time',
     level: 'Entry Level',
@@ -43,6 +44,7 @@ export default function AdminJobsPage() {
       setJobs([]);
     } finally {
       setLoading(false);
+        
     }
   };
 
