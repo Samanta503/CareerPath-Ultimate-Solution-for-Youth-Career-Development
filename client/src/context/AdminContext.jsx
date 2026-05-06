@@ -14,6 +14,7 @@ export function AdminProvider({ children }) {
       setAdmin(JSON.parse(savedAdmin));
     }
     setLoading(false);
+      
   }, []);
 
   const adminLogin = async (email, password) => {
