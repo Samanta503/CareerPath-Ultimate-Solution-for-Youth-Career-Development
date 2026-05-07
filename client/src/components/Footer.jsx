@@ -5,7 +5,7 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative mt-auto border-t border-[#1e3a42]/50 bg-[#03070A]">
+    <footer className="relative mt-auto border-t border-[#1e3a42]/50 bg-[#03070A]" >
       {/* Glow line */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-px bg-linear-to-r from-transparent via-[#14b8a6]/40 to-transparent" />
 
