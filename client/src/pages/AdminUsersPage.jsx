@@ -22,16 +22,12 @@ const InjectStyles = () => (
       25%{border-radius:70% 30% 50% 50%/30% 60% 40% 70%;transform:rotate(90deg) scale(1.05)}
       50%{border-radius:30% 70% 40% 60%/55% 30% 70% 45%;transform:rotate(180deg) scale(.95)}
       75%{border-radius:55% 45% 60% 40%/40% 70% 30% 60%;transform:rotate(270deg) scale(1.02)}
-      
     }
     @keyframes morphBlob2 {
       0%,100%{border-radius:58% 42% 30% 70%/55% 45% 55% 45%;transform:rotate(0)}
-      
       33%{border-radius:40% 60% 60% 40%/60% 30% 70% 40%;transform:rotate(120deg)}
-      
       66%{border-radius:60% 40% 45% 55%/35% 65% 35% 65%;transform:rotate(240deg)}
     }
-    
     @keyframes orbFloat {
       0%{transform:translate(0,0) scale(1)}25%{transform:translate(25px,-35px) scale(1.08)}
       50%{transform:translate(-18px,-55px) scale(.93)}75%{transform:translate(35px,-18px) scale(1.04)}
