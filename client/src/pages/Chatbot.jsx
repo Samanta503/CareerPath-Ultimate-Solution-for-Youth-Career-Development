@@ -444,9 +444,12 @@ function MessageBubble({ msg, index, isLatest }) {
               title="Helpful"
             >
               <ThumbsUp size={10} className={liked ? 'fill-current' : ''} />
+                
             </button>
+        
           )}
           {msg.timestamp && (
+        
             <span className="text-[9px] text-gray-700 font-medium px-1.5 flex items-center gap-1">
               <Clock size={8} /> {msg.timestamp}
             </span>
