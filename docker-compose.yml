@@ -43,6 +43,9 @@ services:
       dockerfile: Dockerfile
     container_name: careerpath-backend
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       APP_NAME: CareerPath
       APP_ENV: production
@@ -58,6 +61,7 @@ services:
       SESSION_DRIVER: file
       CACHE_DRIVER: file
       QUEUE_CONNECTION: sync
+      BROADCAST_DRIVER: log
       JWT_SECRET: ${JWT_SECRET:-careerpath-jwt-secret-change-me}
       JWT_TTL_MINUTES: ${JWT_TTL_MINUTES:-10080}
       JWT_ISSUER: ${JWT_ISSUER:-http://localhost:8000}
@@ -66,11 +70,12 @@ services:
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
       FILESTACK_API_KEY: ${FILESTACK_API_KEY:-}
+      SANCTUM_STATEFUL_DOMAINS: localhost,localhost:3000,127.0.0.1,127.0.0.1:8000
+    volumes:
+      - ./:/var/www/html
+      - vendor_volume:/var/www/html/vendor
     ports:
       - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
     networks:
       - careerpath-network
 
@@ -92,6 +97,8 @@ services:
 
 volumes:
   db_data:
+    driver: local
+  vendor_volume:
     driver: local
 
 networks:
